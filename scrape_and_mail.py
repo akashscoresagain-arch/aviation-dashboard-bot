@@ -5,61 +5,45 @@ import smtplib
 from email.message import EmailMessage
 
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-# ======================
-# SCRAPE DASHBOARD
-# ======================
-
 print("Opening dashboard...")
 
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
+options = Options()
+options.add_argument("--headless=new")
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
 
 driver = webdriver.Chrome(
     service=Service(ChromeDriverManager().install()),
-    options=chrome_options
+    options=options
 )
 
 driver.get("https://www.civilaviation.gov.in/")
 
-wait = WebDriverWait(driver, 30)
+# IMPORTANT — wait for full JS render
+time.sleep(25)
 
-# wait for page load
-wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+print("Reading dashboard text...")
 
-# extra wait for JS dashboard render
-time.sleep(12)
-
-cards = driver.find_elements(By.CLASS_NAME, "card")
-
-print(f"Cards found: {len(cards)}")
-
-data = []
-
-for card in cards:
-    text = card.text.strip()
-    if text:
-        lines = text.split("\n")
-        if len(lines) >= 2:
-            metric = lines[0]
-            value = lines[1]
-            data.append([metric, value])
+body_text = driver.find_element("tag name", "body").text
 
 driver.quit()
 
+lines = [line.strip() for line in body_text.split("\n") if line.strip()]
 
-# ======================
-# CREATE EXCEL
-# ======================
+print(f"Lines captured: {len(lines)}")
+
+# crude metric/value pairing
+data = []
+
+for i in range(0, len(lines)-1, 2):
+    metric = lines[i]
+    value = lines[i+1]
+    data.append([metric, value])
 
 df = pd.DataFrame(data, columns=["Metric", "Value"])
 
@@ -69,9 +53,7 @@ df.to_excel(file_name, index=False)
 print("Excel created")
 
 
-# ======================
-# EMAIL FILE
-# ======================
+# ================= EMAIL =================
 
 EMAIL = os.environ.get("EMAIL_USER")
 PASSWORD = os.environ.get("EMAIL_PASS")
@@ -96,4 +78,4 @@ with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
     smtp.login(EMAIL, PASSWORD)
     smtp.send_message(msg)
 
-print("Email sent successfully ✅")
+print("Email sent ✅")
