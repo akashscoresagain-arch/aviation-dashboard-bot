@@ -2,7 +2,7 @@ name: Daily Automation
 
 on:
   schedule:
-    - cron: '30 15 * * *'   # 9 PM India time
+    - cron: '30 15 * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,5 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Python packages
+        run: pip install pandas openpyxl
+
       - name: Run script
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
         run: python scrape_and_mail.py
