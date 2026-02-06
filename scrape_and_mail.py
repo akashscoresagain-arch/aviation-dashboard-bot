@@ -1,14 +1,17 @@
+import os
 import time
 import pandas as pd
 import smtplib
 from email.message import EmailMessage
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
-# ---------------------------
+
+# =========================
 # SCRAPE DASHBOARD
-# ---------------------------
+# =========================
 
 options = Options()
 options.add_argument("--headless")
@@ -26,6 +29,7 @@ cards = driver.find_elements(By.CLASS_NAME, "card")
 
 for card in cards:
     text = card.text.strip()
+
     if text:
         lines = text.split("\n")
 
@@ -36,20 +40,23 @@ for card in cards:
 
 driver.quit()
 
-# ---------------------------
+
+# =========================
 # CREATE EXCEL
-# ---------------------------
+# =========================
 
 df = pd.DataFrame(data, columns=["Metric", "Value"])
+
 file = "dashboard.xlsx"
 df.to_excel(file, index=False)
 
-# ---------------------------
-# EMAIL
-# ---------------------------
 
-EMAIL = EMAIL_USER
-PASS = EMAIL_PASS
+# =========================
+# EMAIL SETUP
+# =========================
+
+EMAIL = os.environ["EMAIL_USER"]
+PASS = os.environ["EMAIL_PASS"]
 
 msg = EmailMessage()
 msg["Subject"] = "Daily Aviation Dashboard"
@@ -69,4 +76,4 @@ with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
     smtp.login(EMAIL, PASS)
     smtp.send_message(msg)
 
-print("✅ Dashboard emailed!")
+print("✅ Dashboard emailed successfully!")
