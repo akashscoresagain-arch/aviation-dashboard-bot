@@ -1,5 +1,4 @@
 import os
-import time
 import pandas as pd
 import smtplib
 from email.message import EmailMessage
@@ -7,25 +6,37 @@ from email.message import EmailMessage
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 
-# =========================
-# SCRAPE DASHBOARD
-# =========================
+# ===============================
+# SCRAPE CIVIL AVIATION DASHBOARD
+# ===============================
 
 options = Options()
-options.add_argument("--headless")
+options.add_argument("--headless=new")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 
-driver = webdriver.Chrome(options=options)
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service, options=options)
+
+print("Opening dashboard...")
 
 driver.get("https://www.civilaviation.gov.in/")
-time.sleep(10)
 
-data = []
+# wait for dashboard cards to load
+wait = WebDriverWait(driver, 30)
+wait.until(EC.presence_of_element_located((By.CLASS_NAME, "card")))
 
 cards = driver.find_elements(By.CLASS_NAME, "card")
+
+print("Cards found:", len(cards))
+
+data = []
 
 for card in cards:
     text = card.text.strip()
@@ -36,24 +47,28 @@ for card in cards:
         if len(lines) >= 2:
             metric = lines[0]
             value = lines[-1]
+
             data.append([metric, value])
+            print(metric, "->", value)
 
 driver.quit()
 
 
-# =========================
+# ===============================
 # CREATE EXCEL
-# =========================
+# ===============================
 
 df = pd.DataFrame(data, columns=["Metric", "Value"])
 
 file = "dashboard.xlsx"
 df.to_excel(file, index=False)
 
+print("Excel created")
 
-# =========================
-# EMAIL SETUP
-# =========================
+
+# ===============================
+# EMAIL DASHBOARD
+# ===============================
 
 EMAIL = os.environ["EMAIL_USER"]
 PASS = os.environ["EMAIL_PASS"]
